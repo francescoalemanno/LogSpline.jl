@@ -26,6 +26,17 @@ function find_inside(t, x)
     return -1
 end
 
+function mpr_points(xi,order)
+    Ps = collect(xi)
+    for _ in 1:order
+        append!(Ps, (Ps[1:end-1].+Ps[2:end])./2)
+        sort!(Ps)
+    end
+    w = diff(Ps)
+    m = (Ps[1:end-1].+Ps[2:end])./2
+    m,w
+end
+
 function cox_deboor(x, t, order)
     K = order + 1
     Bs = zeros(length(t) + K - 2)
@@ -90,8 +101,7 @@ function fit_logspline(
     J = fill(n_z, K, K)
     D = fill(n_z, K)
     aBk = fill(n_z, K)
-    max_range = extrema((extrema(s)..., extrema(xi)...))
-    int_x = LinRange(max_range..., 5 * K + 1)
+    int_x, w_x = mpr_points(xi, order)
     Ni = length(int_x)
     BKi = fill(n_z, Ni, K)
     for i = 1:N
@@ -115,7 +125,7 @@ function fit_logspline(
                 for k = 1:K
                     lw += C[k] * BKi[i, k]
                 end
-                w = exp(lw)
+                w = exp(lw)*w_x[i]
                 bw = w * BKi[i, p]
                 tbw += bw
                 tw += w
@@ -131,7 +141,7 @@ function fit_logspline(
                 for k = 1:K
                     lw += C[k] * BKi[i, k]
                 end
-                w = exp(lw)
+                w = exp(lw)*w_x[i]
                 bw = w * (BKi[i, p] - D[p]) * (BKi[i, q] - D[q])
                 tbw += bw
                 tw += w
@@ -182,9 +192,9 @@ function fit_logspline(
     end
 
     Z = n_z
-    for v in int_x
+    for (v,w) in zip(int_x, w_x)
         res = dot(cox_deboor(v, xi, order), C)
-        Z += exp(res) * (int_x[2] - int_x[1])
+        Z += w * exp(res)
     end
 
     LogSplineFn(T(log(Z)), collect(C), collect(xi), order, oerr < abstol, oerr)
@@ -272,3 +282,4 @@ end
 
 export cox_deboor, fit_logspline, fit_spline, knots_spline, knots_logspline
 end
+
