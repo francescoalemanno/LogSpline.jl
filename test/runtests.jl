@@ -58,7 +58,7 @@ end
     lx = LinRange(-2, 2, 1000)
     for o = 1:3, n = 10:20
         kn = LinRange(-2, 2, n)
-        kn2 = knots(x, y, n, order = o)
+        kn2 = knots_spline(x, y, n, order = o)
         fn = fit_spline(x, y, kn, order = o)
         fn2 = fit_spline(x, y, kn2, order = o)
         ly = @. abs(g(lx) - fn(lx))

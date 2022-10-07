@@ -1,5 +1,10 @@
-"""
-    LogSpline.jl
+"""LogSpline.jl
+
+    main procedures: fit_logspline, knots_logspline, fit_spline, knots_spline
+
+    extras: cox_deboor
+
+    internal: find_inside, diff_fn
 """
 module LogSpline
 using LinearAlgebra: Diagonal, qr, dot, ColumnNorm
@@ -219,7 +224,7 @@ function diff_fn(x::AbstractVector{T}, y::AbstractVector{T}) where {T<:AbstractF
     xm, yd
 end
 
-function knots(
+function knots_spline(
     x::AbstractVector{T},
     y::AbstractVector{T},
     N::Int;
@@ -255,15 +260,15 @@ function knots_logspline(
     N::Int;
     order::Int,
 ) where {T<:AbstractFloat}
-    q = LinRange(0, 1, N + 2 * order + 1)
+    q = LinRange(0, 1, length(sample)+order+1)
     x = quantile(sample, q)
     xm = (x[1:end-1] .+ x[2:end]) ./ 2
     y = log.(diff(q) ./ diff(x))
-    kn = knots(xm, y, N; order = order)
+    kn = knots_spline(xm, y, N; order = order)
     kn[1] = minimum(sample)
     kn[end] = maximum(sample)
     return kn
 end
 
-export cox_deboor, fit_logspline, fit_spline, knots, knots_logspline
+export cox_deboor, fit_logspline, fit_spline, knots_spline, knots_logspline
 end
