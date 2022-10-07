@@ -3,6 +3,22 @@
 """
 module LogSpline
 
+function find_inside(t,x)
+    N=length(t)
+    #perform quadratic search
+    q = 1
+    while (q+1)^2<length(t) && t[(q+1)^2] < x
+        q+=1
+    end
+    #refine with final linear search
+    for i in q^2:N-1
+        if t[i]<=x<t[i+1]
+            return i
+        end
+    end
+    return -1
+end
+
 function cox_deboor(x, t, order)
     K = order + 1
     Bs = zeros(length(t) + K - 2)
