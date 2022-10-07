@@ -39,3 +39,13 @@ end
     ly = @. abs(sin(lx) - fn(lx))
     @test maximum(ly) < 1e-6
 end
+
+@testset "basic test Spline32" begin
+    x = LinRange(-2.0f0, 2.0f0, 100)
+    y = @. sin(x)
+    knots = LinRange(-2.0f0, 2.0f0, 30)
+    fn = fit_spline(x, y, knots, order = 3)
+    lx = LinRange(-2.0f0, 2.0f0, 500)
+    ly = @. abs(sin(lx) - fn(lx))
+    @test maximum(ly) < 1.0f-6
+end

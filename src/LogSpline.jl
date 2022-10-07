@@ -196,16 +196,16 @@ function (sp::SplineFn)(x)
 end
 
 function fit_spline(
-    x::AbstractVector{Float64},
-    y::AbstractVector{Float64},
-    xi::AbstractVector{Float64};
+    x::AbstractVector{T},
+    y::AbstractVector{T},
+    xi::AbstractVector{T};
     order::Int = 3,
-)
+) where {T<:AbstractFloat}
     issorted(xi) || error("Knots \"xi\" must be sorted.")
     N = length(x)
     K = length(xi) + order - 1
-    M = zeros(N, K)
-    scal = 1 / sqrt(N)
+    M = zeros(T, N, K)
+    scal = T(1 / sqrt(N))
     for i = 1:N
         M[i, :] .= cox_deboor(x[i], xi, order) / scal
     end
