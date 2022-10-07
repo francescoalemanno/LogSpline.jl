@@ -26,15 +26,21 @@ function find_inside(t, x)
     return -1
 end
 
-function mpr_points(xi,order)
+function mpr_points(xi, order)
+    K = length(xi) + order - 1
     Ps = collect(xi)
-    for _ in 1:order
-        append!(Ps, (Ps[1:end-1].+Ps[2:end])./2)
+    while true
+        append!(Ps, (Ps[1:end-1] .+ Ps[2:end]) ./ 2)
         sort!(Ps)
+        if length(Ps) >= K * (2 * order + 1)
+            break
+        end
     end
+    Ps[1] = 2 * Ps[1] - Ps[2]
+    Ps[end] = 2 * Ps[end] - Ps[end-1]
     w = diff(Ps)
-    m = (Ps[1:end-1].+Ps[2:end])./2
-    m,w
+    m = (Ps[1:end-1] .+ Ps[2:end]) ./ 2
+    m, w
 end
 
 function cox_deboor(x, t, order)
@@ -125,7 +131,7 @@ function fit_logspline(
                 for k = 1:K
                     lw += C[k] * BKi[i, k]
                 end
-                w = exp(lw)*w_x[i]
+                w = exp(lw) * w_x[i]
                 bw = w * BKi[i, p]
                 tbw += bw
                 tw += w
@@ -141,7 +147,7 @@ function fit_logspline(
                 for k = 1:K
                     lw += C[k] * BKi[i, k]
                 end
-                w = exp(lw)*w_x[i]
+                w = exp(lw) * w_x[i]
                 bw = w * (BKi[i, p] - D[p]) * (BKi[i, q] - D[q])
                 tbw += bw
                 tw += w
@@ -192,8 +198,8 @@ function fit_logspline(
     end
 
     Z = n_z
-    for (v,w) in zip(int_x, w_x)
-        res = dot(cox_deboor(v, xi, order), C)
+    for (i, w) in enumerate(w_x)
+        res = dot(BKi[i,:], C)
         Z += w * exp(res)
     end
 
@@ -270,7 +276,7 @@ function knots_logspline(
     N::Int;
     order::Int,
 ) where {T<:AbstractFloat}
-    q = LinRange(0, 1, length(sample)+order+1)
+    q = LinRange(0, 1, length(sample) + order + 1)
     x = quantile(sample, q)
     xm = (x[1:end-1] .+ x[2:end]) ./ 2
     y = log.(diff(q) ./ diff(x))
@@ -282,4 +288,3 @@ end
 
 export cox_deboor, fit_logspline, fit_spline, knots_spline, knots_logspline
 end
-
