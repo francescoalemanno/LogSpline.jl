@@ -164,7 +164,7 @@ function fit_logspline(
 
         if err < oerr && isfinite(err) && (!isnan(err))
             oerr = err
-            trust_region = min(trust_region * 1.05, 2 * sqrt(K))
+            trust_region = T(min(trust_region * 1.05, 2 * sqrt(K)))
             verbose && println("$iters, $err, $norm_deltas / $trust_region")
         else
             trust_region /= 2
