@@ -2,8 +2,8 @@
     LogSpline.jl
 """
 module LogSpline
-
 using LinearAlgebra: Diagonal, qr, dot, ColumnNorm
+using Statistics: quantile
 
 function find_inside(t, x)
     N = length(t)
@@ -213,5 +213,57 @@ function fit_spline(
     SplineFn(collect(C), collect(xi), order)
 end
 
-export cox_deboor, fit_logspline, fit_spline
+function diff_fn(x::AbstractVector{T}, y::AbstractVector{T}) where {T<:AbstractFloat}
+    xm = (x[1:end-1] .+ x[2:end]) ./ 2
+    yd = diff(y) ./ diff(x)
+    xm, yd
+end
+
+function knots(
+    x::AbstractVector{T},
+    y::AbstractVector{T},
+    N::Int;
+    order::Int,
+) where {T<:AbstractFloat}
+    order >= 0 || error("Order must be non-negative.")
+    w = x
+    s = sortperm(x)
+    dx, dy = (x[s], y[s])
+    for _ = 0:order
+        w = diff(dx)
+        dx, dy = diff_fn(dx, dy)
+    end
+    Dkyik = abs.(dy) .^ (1 / (1 + order))
+    I_dkyik = cumsum(Dkyik .* w)
+    spacing = LinRange(extrema(I_dkyik)..., N)
+    kn = zeros(N)
+    for (j, p) in enumerate(spacing)
+        i = find_inside(I_dkyik, p)
+        if i == -1
+            # remember to include endpoint
+            i = length(I_dkyik) - 1
+        end
+        kn[j] = (p - I_dkyik[i]) / (I_dkyik[i+1] - I_dkyik[i]) * (dx[i+1] - dx[i]) + dx[i]
+    end
+    kn[1] = minimum(x)
+    kn[end] = maximum(x)
+    sort(unique(kn))
+end
+
+function knots_logspline(
+    sample::AbstractVector{T},
+    N::Int;
+    order::Int,
+) where {T<:AbstractFloat}
+    q = LinRange(0, 1, N + 2 * order + 1)
+    x = quantile(sample, q)
+    xm = (x[1:end-1] .+ x[2:end]) ./ 2
+    y = log.(diff(q) ./ diff(x))
+    kn = knots(xm, y, N; order = order)
+    kn[1] = minimum(sample)
+    kn[end] = maximum(sample)
+    return kn
+end
+
+export cox_deboor, fit_logspline, fit_spline, knots, knots_logspline
 end
