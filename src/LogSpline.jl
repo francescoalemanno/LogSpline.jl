@@ -76,6 +76,7 @@ function fit_logspline(
     pivoting::Bool = true,
     verbose = false,
 ) where {T<:AbstractFloat}
+    issorted(xi) || error("Knots \"xi\" must be sorted.")
     n_z = zero(T)
     N = length(s)
     K = length(xi) + order - 1
