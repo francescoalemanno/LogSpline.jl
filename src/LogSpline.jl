@@ -247,8 +247,9 @@ end
 
 function diff_fn(x::AbstractVector{T}, y::AbstractVector{T}) where {T<:AbstractFloat}
     xm = (x[1:end-1] .+ x[2:end]) ./ 2
-    yd = diff(y) ./ diff(x)
-    xm, yd
+    w = diff(x)
+    yd = diff(y) ./ w
+    xm, yd, w
 end
 
 function knots_spline(
@@ -258,24 +259,24 @@ function knots_spline(
     order::Int,
 ) where {T<:AbstractFloat}
     order >= 0 || error("Order must be non-negative.")
+    N > 0 || error("N must be positive.")
     w = x
     s = sortperm(x)
-    dx, dy = (x[s], y[s])
+    mx, dy = (x[s], y[s])
     for _ = 0:order
-        w = diff(dx)
-        dx, dy = diff_fn(dx, dy)
+        mx, dy, w = diff_fn(mx, dy)
     end
     Dkyik = abs.(dy) .^ (1 / (1 + order))
     I_dkyik = cumsum(Dkyik .* w)
     spacing = LinRange(extrema(I_dkyik)..., N)
-    kn = zeros(N)
+    kn = zeros(N+2)
     for (j, p) in enumerate(spacing)
         i = find_inside(I_dkyik, p)
         if i == -1
             # remember to include endpoint
             i = length(I_dkyik) - 1
         end
-        kn[j] = (p - I_dkyik[i]) / (I_dkyik[i+1] - I_dkyik[i]) * (dx[i+1] - dx[i]) + dx[i]
+        kn[j+1] = (p - I_dkyik[i]) / (I_dkyik[i+1] - I_dkyik[i]) * (mx[i+1] - mx[i]) + mx[i]
     end
     kn[1] = minimum(x)
     kn[end] = maximum(x)
