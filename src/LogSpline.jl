@@ -96,7 +96,8 @@ function fit_logspline(
     order::Int = 3,
     preconditioning::Bool = true,
     pivoting::Bool = true,
-    verbose = false,
+    verbose::Bool = false,
+    trust_region::T = zero(T),
 ) where {T<:AbstractFloat}
     issorted(xi) || error("Knots \"xi\" must be sorted.")
     n_z = zero(T)
@@ -116,9 +117,13 @@ function fit_logspline(
     for i = 1:Ni
         BKi[i, :] .= cox_deboor(int_x[i], xi, order)
     end
-
+    low_trust_region = T(sqrt(K) / 200)
+    if trust_region <= 0
+        trust_region = T(2 * sqrt(K))
+    end
+    perr = T(Inf)
     oerr = T(Inf)
-    trust_region = T(sqrt(K) / 2)
+
     for iters = 1:maxiter
         err = n_z
         J .= n_z
@@ -176,30 +181,36 @@ function fit_logspline(
         )
 
         norm_deltas = T(sqrt(sum(abs2, deltas)))
+        reduced = false
         if norm_deltas > trust_region
+            reduced = true
             deltas .*= trust_region / norm_deltas
         end
 
         back_C .= C
         @. C += deltas
 
+        if (err < oerr < perr) && (reduced)
+            trust_region *= T(1.05)
+        end
+
         if err < oerr && isfinite(err) && (!isnan(err))
+            perr = oerr
             oerr = err
-            trust_region = T(min(trust_region * 1.05, 2 * sqrt(K)))
             verbose && println("$iters, $err, $norm_deltas / $trust_region")
         else
             trust_region /= 2
             verbose && println("reducing trust_region size -> $trust_region")
         end
 
-        if err < abstol || trust_region < T(0.001)
+        if err < abstol || trust_region < low_trust_region
             break
         end
     end
 
     Z = n_z
     for (i, w) in enumerate(w_x)
-        res = dot(BKi[i,:], C)
+        res = dot(BKi[i, :], C)
         Z += w * exp(res)
     end
 
@@ -276,7 +287,11 @@ function knots_logspline(
     N::Int;
     order::Int,
 ) where {T<:AbstractFloat}
-    q = LinRange(0, 1, length(sample) + order + 1)
+    sN = 0
+    while (2^order * sN)^2 < length(sample) || sN < N + order + 2
+        sN += 1
+    end
+    q = LinRange(0, 1, sN)
     x = quantile(sample, q)
     xm = (x[1:end-1] .+ x[2:end]) ./ 2
     y = log.(diff(q) ./ diff(x))
